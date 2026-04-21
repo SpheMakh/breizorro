@@ -2,30 +2,23 @@ import sys
 import numpy
 import shutil
 import logging
-import argparse
-import os.path
 import re
 import numpy as np
 
-import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord
 
 import regions
-from regions import PixCoord
-from regions import PolygonSkyRegion, PolygonPixelRegion
+from regions import PolygonSkyRegion
 
-from argparse import ArgumentParser
 
 from scipy.ndimage.morphology import binary_dilation, binary_erosion, binary_fill_holes
 from scipy.ndimage.measurements import label, find_objects
 import scipy.special
 import scipy.ndimage
 
-from breizorro.utils import get_source_size, format_source_coordinates, deg2ra, deg2dec
-from breizorro.utils import get_image_data, fitsInfo, calculate_beam_area
+from breizorro.utils import get_image_data, fitsInfo
 
 
 def create_logger():
@@ -159,7 +152,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
 
     elif mask_image:
         mask_image, mask_header = get_image_data(mask_image)
-        LOGGER.info(f"Input mask loaded")
+        LOGGER.info("Input mask loaded")
 
         out_mask_fits = outfile or f"{name}.out.{ext}"
     else:
@@ -178,7 +171,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
         except OSError:
             try:
                 regs = regions.Regions.read(filename)
-            except:
+            except ValueError:
                 msg = f"{merge} is neither a FITS file not a regions file"
                 LOGGER.error(msg)
                 raise(msg)
@@ -209,7 +202,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
                 remove_regions(mask_image, regs, wcs)
 
     if number_islands:
-        LOGGER.info(f"(Re)numbering islands")
+        LOGGER.info("(Re)numbering islands")
         mask_image = mask_image != 0
         # mask_image = mask_image.byteswap().newbyteorder()
         mask_image, num_features = label(mask_image)
@@ -220,7 +213,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
         LOGGER.info(f"Removing islands: {remove_islands}")
         for isl_spec in remove_islands:
             isl = resolve_island(isl_spec, mask_image, wcs, ignore_missing=ignore_missing_islands)
-            if isl != None:
+            if isl:
                 mask_image[mask_image == isl] = 0
 
     if isinstance(extract_islands, list):
@@ -240,12 +233,12 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
         mask_image = min_mask[island_labels.ravel()].reshape(island_labels.shape)
 
     if make_binary:
-        LOGGER.info(f"Converting mask to binary")
+        LOGGER.info("Converting mask to binary")
         mask_image = mask_image!=0
         mask_header['BUNIT'] = 'mask'
 
     if invert:
-        LOGGER.info(f"Inverting mask")
+        LOGGER.info("Inverting mask")
         mask_image = mask_image==0
 
     if dilate:
@@ -261,7 +254,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
         mask_image = binary_erosion(input=mask_image, iterations=N)
         
     if fill_holes:
-        LOGGER.info(f"Filling closed regions")
+        LOGGER.info("Filling closed regions")
         mask_image = binary_fill_holes(mask_image)
 
     if sum_peak:
@@ -327,7 +320,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
             LOGGER.error(msg)
             raise(msg)
         source_list = []
-        image_data, hdu_header = get_image_data(restored_image)
+        image_data, _ = get_image_data(restored_image)
         fitsinfo = fitsInfo(restored_image)
         mean_beam = None # Use beam info from the image header by default
         if beam_size:
@@ -377,7 +370,7 @@ def main(restored_image, mask_image, threshold, boxsize, savenoise, merge, subtr
         LOGGER.info("Loading Gui ...")
         display(input_file, mask_image, outcatalog, source_list)
 
-        LOGGER.info(f"Enforcing that mask to binary")
+        LOGGER.info("Enforcing that mask to binary")
         mask_image = mask_image!=0
         mask_header['BUNIT'] = 'mask'
 

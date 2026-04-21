@@ -1,20 +1,12 @@
-import sys
-import numpy
-import shutil
-import logging
-import argparse
-import os.path
-import re
 import numpy as np
 
 import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord
 
 from regions import PixCoord
-from regions import PolygonSkyRegion, PolygonPixelRegion
+from regions import PolygonPixelRegion
 
 def deg_to_hms(ra_deg):
     ra_hours = ra_deg / 15  # 360 degrees = 24 hours
@@ -179,19 +171,19 @@ def fitsInfo(fitsname=None):
     naxis = hdr['NAXIS']
     try:
         beam_size = (hdr['BMAJ'], hdr['BMIN'], hdr['BPA'])
-    except:
+    except KeyError:
         beam_size = None
     try:
         centre = (hdr['CRVAL1'], hdr['CRVAL2'])
-    except:
+    except KeyError:
         centre = None
     try:
-        freq0=None
+        freq0 = None
         for i in range(1, hdr['NAXIS']+1):
             if hdr['CTYPE{0:d}'.format(i)].startswith('FREQ'):
                 freq0 = hdr['CRVAL{0:d}'.format(i)]
-    except:
-        freq0=None
+    except KeyError:
+        freq0 = None
 
     skyArea = (numPix * ddec) ** 2
     fitsinfo = {'wcs': wcs, 'ra': ra, 'dec': dec, 'naxis': naxis,
@@ -252,7 +244,6 @@ def maxDist(contour, pixel_size, x_centroid, y_centroid):
 
     # Find the indices of the points with maximum and minimum distances
     max_idx = np.argmax(distances)
-    min_idx = np.argmin(distances)
 
     # Calculate major and minor axes
     e_maj = np.max(distances) * pixel_size
